@@ -1,21 +1,20 @@
 // ── State ──────────────────────────────────────────────
-let _sheetUrlCache = ''; // 成功画面でリンクに使う
+let _currentMode = 'beginner'; // 'beginner' | 'pro'
+let _sheetUrlCache = '';
 
 // ── Settings ────────────────────────────────────────────
 function loadSettings() {
   return {
-    gasUrl:    localStorage.getItem('gasUrl')    || '',
-    sheetUrl:  localStorage.getItem('sheetUrl')  || '',
-    sheetName: localStorage.getItem('sheetName') || '',
-    setupDone: localStorage.getItem('setupDone') === '1',
+    gasUrl:   localStorage.getItem('gasUrl')   || '',
+    sheetUrl: localStorage.getItem('sheetUrl') || '',
+    sheetName:localStorage.getItem('sheetName')|| '',
   };
 }
 
 function persistSettings(gasUrl, sheetUrl, sheetName) {
-  localStorage.setItem('gasUrl', gasUrl);
-  localStorage.setItem('sheetUrl', sheetUrl);
+  localStorage.setItem('gasUrl',    gasUrl);
+  localStorage.setItem('sheetUrl',  sheetUrl);
   localStorage.setItem('sheetName', sheetName);
-  localStorage.setItem('setupDone', '1');
 }
 
 // ── View Router ─────────────────────────────────────────
@@ -26,130 +25,40 @@ function showView(id) {
 }
 
 function showHome() {
-  updateHomeBanner();
+  const s = loadSettings();
+  const banner = document.getElementById('setup-banner');
+  banner.style.display = (!s.gasUrl || !s.sheetUrl) ? '' : 'none';
   showView('home');
 }
 
-function showSetup() { showSetupStep(1); showView('setup'); }
-function showProcessing() { showView('processing'); }
-
 function showSettings() {
   const s = loadSettings();
-  document.getElementById('settings-gas-url').value  = s.gasUrl;
-  document.getElementById('settings-sheet-url').value = s.sheetUrl;
-  document.getElementById('settings-sheet-name').value = s.sheetName;
-  document.getElementById('settings-status').className = 'settings-status';
-  document.getElementById('create-sheet-status').className = 'create-sheet-status';
+  document.getElementById('s-gas').value   = s.gasUrl;
+  document.getElementById('s-sheet').value = s.sheetUrl;
+  document.getElementById('s-name').value  = s.sheetName;
+  document.getElementById('save-status').className   = 'save-status';
+  document.getElementById('create-status').className = 'create-status';
+  document.getElementById('create-status').textContent = '';
   showView('settings');
 }
 
-// ── Home banner ─────────────────────────────────────────
-function updateHomeBanner() {
-  const s = loadSettings();
-  const banner = document.getElementById('home-status-banner');
-  if (!s.gasUrl || !s.sheetUrl) {
-    banner.className = 'status-banner warn';
-    banner.innerHTML = '⚠️ 設定が未完了です <button onclick="showSetup()">セットアップする</button>';
-  } else {
-    banner.className = 'status-banner ok';
-    banner.innerHTML = '✅ 設定済み <button onclick="showSettings()">確認・変更</button>';
-  }
+// ── Mode Toggle ─────────────────────────────────────────
+function setMode(mode) {
+  _currentMode = mode;
+  localStorage.setItem('mode', mode);
+
+  document.getElementById('mode-btn-beginner').classList.toggle('active', mode === 'beginner');
+  document.getElementById('mode-btn-pro').classList.toggle('active', mode === 'pro');
+  document.getElementById('home-beginner').style.display = mode === 'beginner' ? '' : 'none';
+  document.getElementById('home-pro').style.display      = mode === 'pro'      ? '' : 'none';
 }
 
-// ── Setup Wizard ────────────────────────────────────────
-let _setupChoice = 'new';
-let _setupGasUrl = '';
-let _setupSheetUrl = '';
-
-function showSetupStep(n) {
-  [1, 2, 3].forEach(i => {
-    const el = document.getElementById('setup-step-' + i);
-    if (el) el.style.display = i === n ? '' : 'none';
-    const prog = document.getElementById('prog-' + i);
-    if (prog) {
-      const circle = prog.querySelector('.prog-circle');
-      circle.classList.remove('active', 'done');
-      if (i < n) { circle.classList.add('done'); circle.textContent = '✓'; }
-      else { circle.textContent = i; }
-      if (i === n) circle.classList.add('active');
-    }
-  });
-}
-
-function selectChoice(type) {
-  _setupChoice = type;
-  document.getElementById('choice-new').classList.toggle('active', type === 'new');
-  document.getElementById('choice-existing').classList.toggle('active', type === 'existing');
-  document.getElementById('panel-new').style.display      = type === 'new'      ? '' : 'none';
-  document.getElementById('panel-existing').style.display = type === 'existing' ? '' : 'none';
-}
-
-function setupStep1Next() {
-  const url = document.getElementById('setup-gas-url').value.trim();
-  const status = document.getElementById('setup-step1-status');
-  if (!url || !url.startsWith('https://script.google.com/macros/s/')) {
-    status.textContent = '⚠️ 正しいGAS URLを入力してください（https://script.google.com/macros/s/... の形式）';
-    status.className = 'inline-status';
-    return;
-  }
-  status.textContent = '';
-  _setupGasUrl = url;
-  showSetupStep(2);
-}
-
-async function setupCreateSheet() {
-  const btn = document.getElementById('btn-setup-create');
-  const statusEl = document.getElementById('setup-create-status');
-  btn.disabled = true;
-  btn.textContent = '作成中...';
-  try {
-    const result = await callGas(_setupGasUrl, { action: 'create_sheet' });
-    _setupSheetUrl = result.spreadsheetUrl;
-    statusEl.innerHTML = `✅ 作成しました！<br><a href="${_setupSheetUrl}" target="_blank">スプレッドシートを開く →</a>`;
-    statusEl.className = 'create-sheet-status ok';
-  } catch(e) {
-    statusEl.textContent = '❌ ' + e.message;
-    statusEl.className = 'create-sheet-status err';
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<span>➕ スプレッドシートを自動作成する</span>';
-  }
-}
-
-function setupStep2Next() {
-  const status = document.getElementById('setup-step2-status');
-  if (_setupChoice === 'existing') {
-    _setupSheetUrl = document.getElementById('setup-sheet-url').value.trim();
-  }
-  if (!_setupSheetUrl) {
-    status.textContent = _setupChoice === 'new'
-      ? '⚠️ 先に「自動作成する」ボタンを押してください'
-      : '⚠️ スプレッドシートのURLを入力してください';
-    return;
-  }
-  status.textContent = '';
-  persistSettings(_setupGasUrl, _setupSheetUrl, '');
-  document.getElementById('setup-done-summary').innerHTML =
-    `<strong>GAS URL:</strong> 設定済み ✅<br><strong>スプレッドシート:</strong> 設定済み ✅`;
-  showSetupStep(3);
-}
-
-function finishSetup() {
-  showHome();
-}
-
-function resetSetup() {
-  if (!confirm('設定をリセットして初期設定画面に戻りますか？')) return;
-  localStorage.clear();
-  showView('welcome');
-}
-
-// ── Camera / File ─────────────────────────────────────
+// ── Camera / File ────────────────────────────────────────
 function triggerCapture() {
   const s = loadSettings();
   if (!s.gasUrl || !s.sheetUrl) {
-    showToast('先にセットアップを完了してください');
-    showSetup();
+    showToast('先に設定を完了してください');
+    showSettings();
     return;
   }
   document.getElementById('file-input').click();
@@ -159,17 +68,26 @@ function handleFile(input) {
   const file = input.files[0];
   if (!file) return;
   input.value = '';
+
   const s = loadSettings();
-  if (!s.gasUrl) { showSetup(); return; }
+  if (!s.gasUrl || !s.sheetUrl) { showSettings(); return; }
   _sheetUrlCache = s.sheetUrl;
-  showProcessing();
+
+  showView('processing');
+
   compressImage(file, 1200)
     .then(b64 => callGas(s.gasUrl, { action: 'ocr', image: b64 }))
-    .then(data => { renderReview(data); showView('review'); })
-    .catch(err => { showHome(); showToast('読み取り失敗: ' + err.message); });
+    .then(data => {
+      renderReview(data);
+      showView(_currentMode === 'pro' ? 'review-pro' : 'review-beginner');
+    })
+    .catch(err => {
+      showHome();
+      showToast('読み取り失敗: ' + err.message);
+    });
 }
 
-// ── Image Compression ────────────────────────────────
+// ── Image Compression ─────────────────────────────────────
 function compressImage(file, maxSize) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -194,7 +112,7 @@ function compressImage(file, maxSize) {
   });
 }
 
-// ── GAS API ──────────────────────────────────────────
+// ── GAS API ───────────────────────────────────────────────
 async function callGas(gasUrl, payload) {
   const res = await fetch(gasUrl, {
     method: 'POST',
@@ -208,27 +126,33 @@ async function callGas(gasUrl, payload) {
   return json;
 }
 
-// ── Review Screen ────────────────────────────────────
+// ── Review ────────────────────────────────────────────────
 function renderReview(data) {
-  document.getElementById('review-date').value  = data.date  || '';
-  document.getElementById('review-store').value = data.store || '';
-  document.getElementById('review-total').value = data.total || '';
+  // Beginner fields
+  document.getElementById('b-date').value  = data.date  || '';
+  document.getElementById('b-store').value = data.store || '';
+  document.getElementById('b-total').value = data.total || '';
+
+  // Pro fields
+  document.getElementById('p-date').value  = data.date  || '';
+  document.getElementById('p-store').value = data.store || '';
+  document.getElementById('p-total').value = data.total || '';
 
   const list = document.getElementById('items-list');
   list.innerHTML = '';
   const items = data.items || [];
   document.getElementById('item-count').textContent = items.length + '件';
-  items.forEach((item, idx) => list.appendChild(createItemRow(item.name, item.price, idx)));
+  items.forEach(item => list.appendChild(createItemRow(item.name, item.price)));
 }
 
-function createItemRow(name, price, idx) {
+function createItemRow(name, price) {
   const row = document.createElement('div');
   row.className = 'item-row';
   row.innerHTML = `
-    <input class="item-name" type="text" value="${escHtml(name)}" placeholder="商品名">
-    <span class="item-yen">¥</span>
-    <input class="item-price" type="number" value="${price}" inputmode="numeric">
-    <button class="item-delete" onclick="deleteItem(this)">×</button>
+    <input class="item-name"  type="text"   value="${escHtml(name)}" placeholder="商品名">
+    <span  class="item-yen">¥</span>
+    <input class="item-price" type="number" value="${price || ''}" inputmode="numeric">
+    <button class="item-del" onclick="deleteItem(this)">×</button>
   `;
   return row;
 }
@@ -243,7 +167,7 @@ function recalcTotal() {
   const prices = [...document.getElementById('items-list').querySelectorAll('.item-price')];
   const sum = prices.reduce((s, el) => s + (Number(el.value) || 0), 0);
   if (sum > 0) {
-    document.getElementById('review-total').value = sum;
+    document.getElementById('p-total').value = sum;
     showToast('品目の合計から再計算しました');
   } else {
     showToast('品目が空のため計算できません');
@@ -251,19 +175,23 @@ function recalcTotal() {
 }
 
 function escHtml(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── Save to Sheet ────────────────────────────────────
-async function saveToSheet() {
+// ── Save to Sheet ─────────────────────────────────────────
+async function saveToSheet(mode) {
   const s = loadSettings();
-  const date  = document.getElementById('review-date').value.trim();
-  const store = document.getElementById('review-store').value.trim();
-  const total = Number(document.getElementById('review-total').value);
+  const prefix = mode === 'pro' ? 'p' : 'b';
+  const date  = document.getElementById(prefix + '-date').value.trim();
+  const store = document.getElementById(prefix + '-store').value.trim();
+  const total = Number(document.getElementById(prefix + '-total').value);
 
   if (!total || isNaN(total)) { showToast('合計金額を入力してください'); return; }
 
-  const btn = document.querySelector('.review-actions .btn-primary');
+  const viewId = mode === 'pro' ? 'view-review-pro' : 'view-review-beginner';
+  const btn = document.querySelector('#' + viewId + ' .btn-record');
   btn.disabled = true;
   btn.textContent = '保存中...';
 
@@ -275,67 +203,72 @@ async function saveToSheet() {
       date, store, total,
     });
 
-    // 成功画面
-    document.getElementById('success-detail').innerHTML = `
-      <div class="detail-date">${date || '日付不明'}</div>
-      <div class="detail-store">${store || '店舗名不明'}</div>
-      <div class="detail-total">¥${total.toLocaleString()}</div>
+    document.getElementById('success-card').innerHTML = `
+      <div class="s-date">${date || '日付不明'}</div>
+      <div class="s-store">${store || '店舗名不明'}</div>
+      <div class="s-total">¥${total.toLocaleString()}</div>
     `;
-    const link = document.getElementById('success-sheet-link');
-    link.href = _sheetUrlCache || s.sheetUrl || '#';
-    link.style.display = _sheetUrlCache ? '' : 'none';
+    const link = document.getElementById('sheet-link');
+    const url = _sheetUrlCache || s.sheetUrl;
+    link.href = url || '#';
+    link.style.display = url ? '' : 'none';
     showView('success');
   } catch(e) {
     showToast('保存失敗: ' + e.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = '✅ スプレッドシートに記録する';
+    btn.textContent = mode === 'pro' ? 'スプレッドシートに記録する' : '記録する';
   }
 }
 
-// ── Settings screen ──────────────────────────────────
+// ── Settings Screen ───────────────────────────────────────
 function saveSettings() {
-  const gasUrl    = document.getElementById('settings-gas-url').value.trim();
-  const sheetUrl  = document.getElementById('settings-sheet-url').value.trim();
-  const sheetName = document.getElementById('settings-sheet-name').value.trim();
-  const statusEl  = document.getElementById('settings-status');
+  const gasUrl    = document.getElementById('s-gas').value.trim();
+  const sheetUrl  = document.getElementById('s-sheet').value.trim();
+  const sheetName = document.getElementById('s-name').value.trim();
+  const statusEl  = document.getElementById('save-status');
 
-  if (!gasUrl)   { showStatusEl(statusEl, 'GAS URLを入力してください', 'err'); return; }
-  if (!sheetUrl) { showStatusEl(statusEl, 'スプレッドシートURLを入力してください', 'err'); return; }
+  if (!gasUrl)   { showSaveStatus(statusEl, 'GAS URLを入力してください', 'err'); return; }
+  if (!sheetUrl) { showSaveStatus(statusEl, 'スプレッドシートURLを入力してください', 'err'); return; }
 
   persistSettings(gasUrl, sheetUrl, sheetName);
-  showStatusEl(statusEl, '設定を保存しました ✓', 'ok');
-  updateHomeBanner();
+  showSaveStatus(statusEl, '設定を保存しました ✓', 'ok');
+
+  // Update banner
+  const banner = document.getElementById('setup-banner');
+  banner.style.display = 'none';
 }
 
-async function settingsCreateSheet() {
-  const gasUrl = document.getElementById('settings-gas-url').value.trim();
+function showSaveStatus(el, msg, type) {
+  el.textContent = msg;
+  el.className = 'save-status ' + type;
+}
+
+async function createSheet() {
+  const gasUrl = document.getElementById('s-gas').value.trim();
   if (!gasUrl) { showToast('先にGAS URLを入力してください'); return; }
-  const btn = document.getElementById('btn-create-sheet');
-  const statusEl = document.getElementById('create-sheet-status');
+
+  const btn = document.getElementById('btn-create');
+  const statusEl = document.getElementById('create-status');
   btn.disabled = true;
   btn.textContent = '作成中...';
+
   try {
     const result = await callGas(gasUrl, { action: 'create_sheet' });
     const url = result.spreadsheetUrl;
-    document.getElementById('settings-sheet-url').value = url;
-    statusEl.innerHTML = `✅ 作成しました！<br><a href="${url}" target="_blank">スプレッドシートを開く →</a>`;
-    statusEl.className = 'create-sheet-status ok';
+    document.getElementById('s-sheet').value = url;
+    statusEl.innerHTML = `✅ 作成しました！<br><a href="${url}" target="_blank" style="color:var(--success)">スプレッドシートを開く →</a>`;
+    statusEl.className = 'create-status ok';
   } catch(e) {
     statusEl.textContent = '❌ ' + e.message;
-    statusEl.className = 'create-sheet-status err';
+    statusEl.className = 'create-status err';
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<span class="btn-create-icon">➕</span> 新規スプレッドシートを作成';
+    btn.innerHTML = '➕ 新規作成する';
   }
 }
 
-function showStatusEl(el, msg, type) {
-  el.textContent = msg;
-  el.className = 'settings-status ' + type;
-}
-
-// ── Toast ────────────────────────────────────────────
+// ── Toast ─────────────────────────────────────────────────
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -343,16 +276,13 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 3500);
 }
 
-// ── Init ─────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────
 function initApp() {
-  const s = loadSettings();
-  if (!s.setupDone) {
-    showView('welcome');
-  } else {
-    updateHomeBanner();
-    showView('home');
-  }
+  const savedMode = localStorage.getItem('mode') || 'beginner';
+  setMode(savedMode);
+  showHome();
 }
+
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
 } else {

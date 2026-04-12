@@ -5,219 +5,125 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>レシートスキャナー</title>
-  <link rel="stylesheet" href="css/style.css?v=2">
+  <link rel="stylesheet" href="css/style.css?v=3">
 </head>
 <body>
 
-  <!-- ウェルカム画面（初回のみ） -->
-  <div id="view-welcome" class="view">
-    <div class="welcome-content">
-      <div class="welcome-icon">🧾</div>
-      <h1 class="welcome-title">レシートスキャナー</h1>
-      <p class="welcome-sub">撮影するだけで<br>Googleスプレッドシートに自動記録</p>
-      <div class="welcome-steps">
-        <div class="step"><span class="step-num">1</span><span>アプリの初期設定をする</span></div>
-        <div class="step"><span class="step-num">2</span><span>レシートを撮影する</span></div>
-        <div class="step"><span class="step-num">3</span><span>内容を確認して記録する</span></div>
-      </div>
-      <button class="btn-primary btn-large" onclick="showSetup()">はじめる →</button>
-      <p class="welcome-note">※ 初回のみ設定が必要です（5分程度）</p>
-    </div>
-  </div>
-
-  <!-- セットアップウィザード -->
-  <div id="view-setup" class="view">
-    <div class="header">
-      <div></div>
-      <h2>初期設定</h2>
-      <div></div>
-    </div>
-    <div class="setup-progress">
-      <div class="progress-step" id="prog-1">
-        <div class="prog-circle active">1</div>
-        <span>GAS設定</span>
-      </div>
-      <div class="progress-line"></div>
-      <div class="progress-step" id="prog-2">
-        <div class="prog-circle">2</div>
-        <span>スプレッドシート</span>
-      </div>
-      <div class="progress-line"></div>
-      <div class="progress-step" id="prog-3">
-        <div class="prog-circle">3</div>
-        <span>完了</span>
-      </div>
-    </div>
-
-    <!-- Step 1 -->
-    <div id="setup-step-1" class="setup-step">
-      <div class="setup-step-content">
-        <div class="setup-step-icon">⚙️</div>
-        <h3>Google Apps Script の設定</h3>
-        <p class="setup-desc">このアプリはGoogleの無料サービスを使って動きます。<br>まず、下記の手順でURLを取得してください。</p>
-
-        <div class="howto-box">
-          <div class="howto-step">
-            <span class="howto-num">①</span>
-            <span><a href="https://script.google.com" target="_blank">script.google.com</a> を開いて「新しいプロジェクト」を作成</span>
-          </div>
-          <div class="howto-step">
-            <span class="howto-num">②</span>
-            <span><a href="https://github.com/warapiece/receipt-scanner/blob/main/gas/Code.gs" target="_blank">Code.gs</a> の内容をコピーして貼り付け</span>
-          </div>
-          <div class="howto-step">
-            <span class="howto-num">③</span>
-            <span>左メニュー「サービス＋」→ <strong>Drive API</strong> を追加</span>
-          </div>
-          <div class="howto-step">
-            <span class="howto-num">④</span>
-            <span>「デプロイ」→「新しいデプロイ」→ ウェブアプリ<br>実行: <strong>自分</strong> / アクセス: <strong>全員</strong></span>
-          </div>
-          <div class="howto-step">
-            <span class="howto-num">⑤</span>
-            <span>表示されたURLをコピーして下に貼り付け</span>
-          </div>
-        </div>
-
-        <div class="field-group">
-          <label>GAS URL（デプロイ後に表示されるURL）</label>
-          <input type="url" id="setup-gas-url" placeholder="https://script.google.com/macros/s/..." inputmode="url">
-        </div>
-        <div id="setup-step1-status" class="inline-status"></div>
-        <button class="btn-primary" onclick="setupStep1Next()">次へ →</button>
-      </div>
-    </div>
-
-    <!-- Step 2 -->
-    <div id="setup-step-2" class="setup-step" style="display:none">
-      <div class="setup-step-content">
-        <div class="setup-step-icon">📊</div>
-        <h3>スプレッドシートを準備</h3>
-        <p class="setup-desc">記録先のGoogleスプレッドシートを選択してください。</p>
-
-        <div class="sheet-choice">
-          <button class="btn-choice active" id="choice-new" onclick="selectChoice('new')">
-            <span class="choice-icon">➕</span>
-            <span class="choice-label">新しく作成する</span>
-            <span class="choice-sub">おすすめ</span>
-          </button>
-          <button class="btn-choice" id="choice-existing" onclick="selectChoice('existing')">
-            <span class="choice-icon">📂</span>
-            <span class="choice-label">既存のものを使う</span>
-          </button>
-        </div>
-
-        <!-- 新規作成 -->
-        <div id="panel-new">
-          <button class="btn-create-sheet" id="btn-setup-create" onclick="setupCreateSheet()">
-            <span>➕ スプレッドシートを自動作成する</span>
-          </button>
-          <div id="setup-create-status" class="create-sheet-status"></div>
-        </div>
-
-        <!-- 既存URL -->
-        <div id="panel-existing" style="display:none">
-          <div class="field-group">
-            <label>スプレッドシートのURL</label>
-            <input type="url" id="setup-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/..." inputmode="url">
-          </div>
-        </div>
-
-        <div id="setup-step2-status" class="inline-status"></div>
-        <button class="btn-primary" id="btn-step2-next" onclick="setupStep2Next()">次へ →</button>
-        <button class="btn-text" onclick="showSetupStep(1)">← 戻る</button>
-      </div>
-    </div>
-
-    <!-- Step 3 完了 -->
-    <div id="setup-step-3" class="setup-step" style="display:none">
-      <div class="setup-step-content setup-done">
-        <div class="setup-done-icon">🎉</div>
-        <h3>設定完了！</h3>
-        <p class="setup-desc">準備ができました。さっそくレシートを撮影してみましょう。</p>
-        <div class="setup-done-summary" id="setup-done-summary"></div>
-        <button class="btn-primary btn-large" onclick="finishSetup()">レシートを撮影する 📷</button>
-      </div>
-    </div>
-  </div>
-
   <!-- ホーム画面 -->
-  <div id="view-home" class="view">
+  <div id="view-home" class="view active">
     <div class="header">
-      <h1>レシートスキャナー</h1>
-      <button class="icon-btn" onclick="showSettings()" title="設定">⚙️</button>
+      <div class="mode-toggle">
+        <button id="mode-btn-beginner" class="mode-btn active" onclick="setMode('beginner')">かんたん</button>
+        <button id="mode-btn-pro" class="mode-btn" onclick="setMode('pro')">プロ版</button>
+      </div>
+      <button class="icon-btn" onclick="showSettings()">⚙️</button>
     </div>
 
-    <!-- 接続状態バナー -->
-    <div id="home-status-banner" class="status-banner"></div>
+    <!-- 未設定バナー -->
+    <div id="setup-banner" class="setup-banner" style="display:none">
+      ⚠️ 設定がまだです &nbsp;<button onclick="showSettings()">設定する →</button>
+    </div>
 
-    <div class="home-content">
+    <!-- かんたんモード -->
+    <div id="home-beginner" class="home-content">
+      <p class="home-lead">レシートを撮影して記録</p>
       <div class="camera-area" onclick="triggerCapture()">
         <div class="camera-icon">📷</div>
-        <p>タップして撮影</p>
+        <p>ここをタップして撮影</p>
       </div>
-      <button class="btn-primary btn-large" onclick="triggerCapture()">レシートを撮影する</button>
-      <label class="btn-secondary">
-        ギャラリーから選択
-        <input type="file" id="file-input-gallery" accept="image/*" onchange="handleFile(this)" style="display:none">
+      <label class="btn-sub-upload">
+        ギャラリーから選ぶ
+        <input type="file" id="file-gallery-b" accept="image/*" onchange="handleFile(this)" style="display:none">
       </label>
     </div>
+
+    <!-- プロ版モード -->
+    <div id="home-pro" class="home-content" style="display:none">
+      <p class="home-lead">レシートを撮影して記録</p>
+      <div class="camera-area" onclick="triggerCapture()">
+        <div class="camera-icon">📷</div>
+        <p>ここをタップして撮影</p>
+      </div>
+      <label class="btn-secondary">
+        ギャラリーから選ぶ
+        <input type="file" id="file-gallery-p" accept="image/*" onchange="handleFile(this)" style="display:none">
+      </label>
+    </div>
+
     <input type="file" id="file-input" accept="image/*" capture="environment" onchange="handleFile(this)" style="display:none">
   </div>
 
-  <!-- 処理中画面 -->
+  <!-- 処理中 -->
   <div id="view-processing" class="view">
     <div class="processing-content">
       <div class="spinner"></div>
-      <p class="processing-text" id="processing-text">レシートを読み取り中...</p>
-      <p class="processing-sub">Googleが文字を認識しています</p>
+      <p class="processing-text">読み取り中...</p>
+      <p class="processing-sub">少しお待ちください</p>
     </div>
   </div>
 
-  <!-- レビュー画面 -->
-  <div id="view-review" class="view">
+  <!-- かんたん確認画面 -->
+  <div id="view-review-beginner" class="view">
+    <div class="header">
+      <button class="back-btn" onclick="showHome()">← 戻る</button>
+      <h2>確認</h2>
+      <div></div>
+    </div>
+    <div class="review-simple">
+      <div class="review-field">
+        <label>日付</label>
+        <input type="text" id="b-date" placeholder="YYYY/MM/DD">
+      </div>
+      <div class="review-field">
+        <label>店舗名</label>
+        <input type="text" id="b-store" placeholder="店舗名">
+      </div>
+      <div class="review-total-block">
+        <label>合計金額<span class="check-label">← 確認してください</span></label>
+        <div class="total-row">
+          <span class="yen">¥</span>
+          <input type="number" id="b-total" inputmode="numeric" placeholder="0">
+        </div>
+      </div>
+      <button class="btn-record" onclick="saveToSheet('beginner')">記録する</button>
+      <button class="btn-cancel" onclick="showHome()">やり直す</button>
+    </div>
+  </div>
+
+  <!-- プロ版確認画面 -->
+  <div id="view-review-pro" class="view">
     <div class="header">
       <button class="back-btn" onclick="showHome()">← 戻る</button>
       <h2>内容確認・修正</h2>
       <div></div>
     </div>
-    <div class="review-content">
-      <p class="review-hint">📝 間違いがあれば直接タップして修正できます</p>
-
-      <div class="field-group">
+    <div class="review-pro">
+      <div class="review-field">
         <label>日付</label>
-        <input type="text" id="review-date" placeholder="YYYY/MM/DD">
+        <input type="text" id="p-date" placeholder="YYYY/MM/DD">
       </div>
-      <div class="field-group">
+      <div class="review-field">
         <label>店舗名</label>
-        <input type="text" id="review-store" placeholder="店舗名">
+        <input type="text" id="p-store" placeholder="店舗名">
       </div>
-
       <div class="items-section">
         <div class="items-header">
-          <label>品目一覧（参考）</label>
+          <label>品目一覧</label>
           <span id="item-count" class="item-count"></span>
         </div>
         <div id="items-list"></div>
+        <button class="btn-recalc" onclick="recalcTotal()">↺ 品目から合計を再計算</button>
       </div>
-
-      <div class="total-section">
-        <div class="total-label-row">
-          <label>合計金額 <span class="total-required">※ここだけ確認してください</span></label>
-          <button class="btn-recalc" onclick="recalcTotal()" title="品目から再計算">↺ 品目から再計算</button>
-        </div>
-        <div class="total-input-wrap">
-          <span class="yen-sign">¥</span>
-          <input type="number" id="review-total" placeholder="0" inputmode="numeric">
+      <div class="review-total-block">
+        <label>合計金額<span class="check-label">← 最終確認</span></label>
+        <div class="total-row">
+          <span class="yen">¥</span>
+          <input type="number" id="p-total" inputmode="numeric" placeholder="0">
         </div>
       </div>
-
-      <div class="review-actions">
-        <button class="btn-primary btn-large" onclick="saveToSheet()">✅ スプレッドシートに記録する</button>
-        <button class="btn-secondary" onclick="showHome()">やり直す</button>
-      </div>
+      <button class="btn-record" onclick="saveToSheet('pro')">スプレッドシートに記録する</button>
+      <button class="btn-cancel" onclick="showHome()">やり直す</button>
     </div>
   </div>
 
@@ -226,9 +132,9 @@
     <div class="success-content">
       <div class="success-icon">✅</div>
       <h2>記録しました！</h2>
-      <div class="success-detail" id="success-detail"></div>
-      <a id="success-sheet-link" href="#" target="_blank" class="btn-sheet-link">スプレッドシートを確認する →</a>
-      <button class="btn-primary" onclick="showHome()">続けて撮影する</button>
+      <div class="success-card" id="success-card"></div>
+      <a id="sheet-link" href="#" target="_blank" class="btn-sheet-link">スプレッドシートを確認 →</a>
+      <button class="btn-record" onclick="showHome()">続けて撮影する</button>
     </div>
   </div>
 
@@ -240,52 +146,37 @@
       <div></div>
     </div>
     <div class="settings-content">
-      <div class="settings-section">
-        <h3>Google Apps Script URL</h3>
-        <p class="settings-desc">GASをデプロイした後に表示されるURLです。</p>
-        <div class="field-group">
-          <label>GAS エンドポイント URL</label>
-          <input type="url" id="settings-gas-url" placeholder="https://script.google.com/macros/s/...">
-        </div>
+      <div class="settings-group">
+        <label>GAS URL <span class="label-hint">（Google Apps ScriptのデプロイURL）</span></label>
+        <input type="url" id="s-gas" placeholder="https://script.google.com/macros/s/...">
+        <p class="settings-note">
+          設定方法 →
+          <a href="https://github.com/warapiece/receipt-scanner#セットアップ手順" target="_blank">README を見る</a>
+        </p>
       </div>
-
-      <div class="settings-section">
-        <h3>転記先スプレッドシート</h3>
-        <p class="settings-desc">既存のURLを貼り付けるか、新規作成してください。</p>
-        <div class="field-group">
-          <label>スプレッドシート URL</label>
-          <input type="url" id="settings-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/...">
-        </div>
-        <button class="btn-create-sheet" id="btn-create-sheet" onclick="settingsCreateSheet()">
-          <span class="btn-create-icon">➕</span> 新規スプレッドシートを作成
-        </button>
-        <div id="create-sheet-status" class="create-sheet-status"></div>
+      <div class="settings-group">
+        <label>スプレッドシート URL</label>
+        <input type="url" id="s-sheet" placeholder="https://docs.google.com/spreadsheets/d/...">
+        <button class="btn-create" id="btn-create" onclick="createSheet()">➕ 新規作成する</button>
+        <div id="create-status" class="create-status"></div>
       </div>
-
-      <div class="field-group">
-        <label>書き込むシート名（省略可）</label>
-        <input type="text" id="settings-sheet-name" placeholder="空白の場合は最初のシート">
+      <div class="settings-group">
+        <label>シート名 <span class="label-hint">（省略可）</span></label>
+        <input type="text" id="s-name" placeholder="空白 = 最初のシート">
       </div>
+      <button class="btn-record" onclick="saveSettings()">保存する</button>
+      <div id="save-status" class="save-status"></div>
 
-      <button class="btn-primary" onclick="saveSettings()">設定を保存</button>
-      <div id="settings-status" class="settings-status"></div>
-
-      <div class="settings-section">
-        <h3>スプレッドシートの列構成</h3>
-        <table class="col-table">
-          <tr><th>A列</th><td>日付</td></tr>
-          <tr><th>B列</th><td>店舗名</td></tr>
-          <tr><th>C列</th><td>合計金額（数値）</td></tr>
-        </table>
+      <div class="col-info">
+        <p class="col-title">書き込み列</p>
+        <div class="col-row"><span>A列</span><span>日付</span></div>
+        <div class="col-row"><span>B列</span><span>店舗名</span></div>
+        <div class="col-row"><span>C列</span><span>合計金額</span></div>
       </div>
-
-      <button class="btn-danger-text" onclick="resetSetup()">初期設定をやり直す</button>
     </div>
   </div>
 
-  <!-- トースト -->
   <div id="toast" class="toast"></div>
-
-  <script src="js/app.js?v=2"></script>
+  <script src="js/app.js?v=3"></script>
 </body>
 </html>
