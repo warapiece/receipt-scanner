@@ -109,11 +109,15 @@
 
       <div class="settings-section">
         <h3>スプレッドシート</h3>
-        <p class="settings-desc">転記先のGoogleスプレッドシートのURLを貼り付けてください。</p>
+        <p class="settings-desc">既存のスプレッドシートURLを貼り付けるか、新規作成してください。</p>
         <div class="field-group">
           <label>スプレッドシート URL</label>
           <input type="url" id="settings-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/...">
         </div>
+        <button class="btn-create-sheet" id="btn-create-sheet" onclick="createNewSheet()">
+          <span class="btn-create-icon">➕</span> 新規スプレッドシートを作成
+        </button>
+        <div id="create-sheet-status" class="create-sheet-status"></div>
       </div>
 
       <div class="field-group">

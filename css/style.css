@@ -393,6 +393,51 @@ html, body {
   background: #fee2e2;
   color: var(--danger);
 }
+/* Create sheet button */
+.btn-create-sheet {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 12px;
+  background: #f0fdf4;
+  color: var(--success);
+  border: 2px dashed var(--success);
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-create-sheet:active { background: #dcfce7; }
+.btn-create-sheet:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn-create-icon { font-size: 16px; }
+.create-sheet-status {
+  font-size: 13px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  display: none;
+  line-height: 1.5;
+}
+.create-sheet-status.ok {
+  display: block;
+  background: #dcfce7;
+  color: var(--success);
+}
+.create-sheet-status.err {
+  display: block;
+  background: #fee2e2;
+  color: var(--danger);
+}
+.create-sheet-status a {
+  color: var(--success);
+  word-break: break-all;
+}
+
 .col-table {
   width: 100%;
   border-collapse: collapse;

@@ -84,6 +84,7 @@ function handleFile(input) {
   }
 
   showProcessing();
+
   compressImage(file, 1200).then(base64 => {
     return callGasOcr(settings.gasUrl, base64);
   }).then(data => {
@@ -186,7 +187,11 @@ function updateItemCount() {
 }
 
 function escHtml(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
 }
 
 // ── Save to Sheet ────────────────────────────────────────
@@ -229,19 +234,48 @@ async function saveToSheet() {
   }
 }
 
+// ── Create New Sheet ─────────────────────────────────────
+async function createNewSheet() {
+  const gasUrl = document.getElementById('settings-gas-url').value.trim();
+  if (!gasUrl) {
+    showToast('先にGAS URLを入力してください');
+    return;
+  }
+
+  const btn = document.getElementById('btn-create-sheet');
+  const statusEl = document.getElementById('create-sheet-status');
+  btn.disabled = true;
+  btn.textContent = '作成中...';
+  statusEl.className = 'create-sheet-status';
+
+  try {
+    const result = await callGas(gasUrl, { action: 'create_sheet' });
+    const url = result.spreadsheetUrl;
+    document.getElementById('settings-sheet-url').value = url;
+    statusEl.innerHTML = `✅ 作成しました！URLを自動入力しました。<br><a href="${url}" target="_blank">スプレッドシートを開く →</a>`;
+    statusEl.className = 'create-sheet-status ok';
+    showToast('スプレッドシートを作成しました');
+  } catch (err) {
+    statusEl.textContent = '❌ 作成に失敗しました: ' + err.message;
+    statusEl.className = 'create-sheet-status err';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span class="btn-create-icon">➕</span> 新規スプレッドシートを作成';
+  }
+}
+
 // ── Toast ────────────────────────────────────────────────
 function showToast(msg) {
   const toast = document.getElementById('toast');
   toast.textContent = msg;
   toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 3000);
+  setTimeout(() => toast.classList.remove('show'), 3500);
 }
 
 // ── Init ─────────────────────────────────────────────────
 (function init() {
   const settings = loadSettings();
   if (!settings.gasUrl || !settings.sheetUrl) {
-    // First launch → show settings hint
     setTimeout(() => showToast('まず設定でGAS URLとスプレッドシートURLを入力してください'), 800);
   }
 })();

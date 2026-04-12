@@ -1,38 +1,33 @@
 /**
  * レシートスキャナー - Google Apps Script バックエンド
+ * ※ APIキー不要・完全無料で動作します
  *
  * 【初期設定】
- * 1. スクリプトプロパティに以下を設定してください:
- *    キー: GEMINI_API_KEY
- *    値:   あなたの Gemini API キー (https://aistudio.google.com/app/apikey で取得)
+ * 1. GASエディタで「サービスを追加」→ Drive API を有効化
+ *    (左メニュー「サービス」→ + → Drive API → 追加)
  *
  * 2. デプロイ設定:
- *    - 新しいデプロイ → ウェブアプリ
+ *    「デプロイ」→「新しいデプロイ」→「ウェブアプリ」
  *    - 次のユーザーとして実行: 自分
  *    - アクセスできるユーザー: 全員
  *
- * 3. デプロイ後に表示される URL をアプリの設定に貼り付けてください
+ * 3. デプロイ後のURLをアプリ設定に貼り付けてください
  */
 
 // ────────────────────────────────────────────────────────
 // エントリーポイント
 // ────────────────────────────────────────────────────────
 function doPost(e) {
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Content-Type': 'application/json; charset=utf-8',
-  };
-
   try {
     const data = JSON.parse(e.postData.contents);
-
     let result;
+
     if (data.action === 'ocr') {
       result = ocrReceipt(data.image);
     } else if (data.action === 'save') {
       result = saveToSheet(data);
+    } else if (data.action === 'create_sheet') {
+      result = createNewSpreadsheet();
     } else {
       result = { error: 'Unknown action: ' + data.action };
     }
@@ -48,89 +43,132 @@ function doPost(e) {
   }
 }
 
-function doGet(e) {
-  // 動作確認用
+function doGet() {
   return ContentService
     .createTextOutput(JSON.stringify({ status: 'ok', message: 'Receipt Scanner GAS is running.' }))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
 // ────────────────────────────────────────────────────────
-// OCR (Gemini API)
+// OCR: Google Drive の無料OCR機能を使用（APIキー不要）
 // ────────────────────────────────────────────────────────
 function ocrReceipt(base64Image) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY がスクリプトプロパティに設定されていません');
-  }
+  // base64画像をBlobに変換
+  const imageBytes = Utilities.base64Decode(base64Image);
+  const blob = Utilities.newBlob(imageBytes, 'image/jpeg', 'receipt_temp.jpg');
 
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + apiKey;
-
-  const prompt = `このレシート画像を読み取り、以下のJSON形式のみで返してください（説明文や```は不要）:
-{
-  "date": "YYYY/MM/DD",
-  "store": "店舗名",
-  "items": [
-    {"name": "商品名", "price": 金額(数値)}
-  ],
-  "total": 合計金額(数値)
-}
-注意事項:
-- 日付が読み取れない場合は今日の日付 (${getTodayString()}) を使用
-- 店舗名が不明な場合は空文字
-- 金額はすべて整数（円単位）
-- 税込合計を "total" に設定`;
-
-  const payload = {
-    contents: [{
-      parts: [
-        { text: prompt },
-        { inline_data: { mime_type: 'image/jpeg', data: base64Image } }
-      ]
-    }],
-    generationConfig: {
-      temperature: 0.1,
-      maxOutputTokens: 2048,
+  // Google DriveのOCR機能でGoogleドキュメントとして取り込む（無料）
+  const file = Drive.Files.insert(
+    {
+      title: 'receipt_temp_ocr',
+      mimeType: 'application/vnd.google-apps.document'
+    },
+    blob,
+    {
+      ocr: true,
+      ocrLanguage: 'ja'   // 日本語OCR
     }
+  );
+
+  // テキスト抽出
+  const doc = DocumentApp.openById(file.id);
+  const rawText = doc.getBody().getText();
+
+  // 一時ファイルを削除
+  DriveApp.getFileById(file.id).setTrashed(true);
+
+  // テキストを解析してJSON化
+  return parseReceiptText(rawText);
+}
+
+// ────────────────────────────────────────────────────────
+// レシートテキスト解析
+// ────────────────────────────────────────────────────────
+function parseReceiptText(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+  // 日付を探す (YYYY/MM/DD, YYYY-MM-DD, YYYY年MM月DD日 など)
+  let date = getTodayString();
+  const datePatterns = [
+    /(\d{4})[\/\-年](\d{1,2})[\/\-月](\d{1,2})/,
+    /(\d{2})[\/\-](\d{1,2})[\/\-](\d{1,2})/,
+  ];
+  for (const line of lines) {
+    for (const pat of datePatterns) {
+      const m = line.match(pat);
+      if (m) {
+        const y = m[1].length === 2 ? '20' + m[1] : m[1];
+        date = y + '/' + String(m[2]).padStart(2,'0') + '/' + String(m[3]).padStart(2,'0');
+        break;
+      }
+    }
+    if (date !== getTodayString()) break;
+  }
+
+  // 店舗名（最初の非数字行）
+  let store = '';
+  for (const line of lines) {
+    if (!/^\d/.test(line) && line.length > 1 && !/合計|小計|税|領収|レシート|\*/.test(line)) {
+      store = line;
+      break;
+    }
+  }
+
+  // 品目と金額を抽出
+  const items = [];
+  const itemPattern = /^(.+?)\s+[¥￥\\]?\s*(\d{2,6})\s*$/;
+  const amountPattern = /[¥￥\\]?\s*(\d{2,6})/;
+
+  for (const line of lines) {
+    const m = line.match(itemPattern);
+    if (m) {
+      const name = m[1].trim();
+      const price = parseInt(m[2], 10);
+      // 日付や合計行を除外
+      if (!/(合計|小計|税|レシート|領収|年|月|日)/.test(name) && price < 100000) {
+        items.push({ name, price });
+      }
+    }
+  }
+
+  // 合計金額を探す（「合計」「お会計」「税込」などの行の金額）
+  let total = 0;
+  const totalKeywords = /合計|お会計|税込|total|お支払/i;
+  for (const line of lines) {
+    if (totalKeywords.test(line)) {
+      const m = line.match(/(\d{3,6})/g);
+      if (m) {
+        // 最大の数値を合計とみなす
+        const nums = m.map(Number);
+        const candidate = Math.max(...nums);
+        if (candidate > total) total = candidate;
+      }
+    }
+  }
+
+  // 合計が見つからない場合は品目の合計
+  if (total === 0 && items.length > 0) {
+    total = items.reduce((s, i) => s + i.price, 0);
+  }
+
+  // 合計がまだ0なら全行から最大の金額を探す
+  if (total === 0) {
+    for (const line of lines) {
+      const m = line.match(/(\d{3,6})/g);
+      if (m) {
+        const nums = m.map(Number).filter(n => n >= 100 && n < 100000);
+        if (nums.length > 0) total = Math.max(total, Math.max(...nums));
+      }
+    }
+  }
+
+  return {
+    date,
+    store,
+    items,
+    total,
+    rawText // デバッグ用（アプリ側では非表示）
   };
-
-  const response = UrlFetchApp.fetch(url, {
-    method: 'post',
-    contentType: 'application/json',
-    payload: JSON.stringify(payload),
-    muteHttpExceptions: true,
-  });
-
-  const statusCode = response.getResponseCode();
-  if (statusCode !== 200) {
-    throw new Error('Gemini API エラー: HTTP ' + statusCode + ' - ' + response.getContentText());
-  }
-
-  const result = JSON.parse(response.getContentText());
-
-  if (!result.candidates || result.candidates.length === 0) {
-    throw new Error('Gemini API から応答がありませんでした');
-  }
-
-  const text = result.candidates[0].content.parts[0].text.trim();
-
-  // JSON部分を抽出
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error('レシートの読み取りに失敗しました。もう一度撮影してください。');
-  }
-
-  const parsed = JSON.parse(jsonMatch[0]);
-
-  // 型を保証
-  parsed.total = Number(parsed.total) || 0;
-  if (!Array.isArray(parsed.items)) parsed.items = [];
-  parsed.items = parsed.items.map(item => ({
-    name: String(item.name || ''),
-    price: Number(item.price) || 0,
-  }));
-
-  return parsed;
 }
 
 // ────────────────────────────────────────────────────────
@@ -141,7 +179,6 @@ function saveToSheet(data) {
 
   if (!spreadsheetUrl) throw new Error('spreadsheetUrl が指定されていません');
 
-  // URL から ID を抽出
   const idMatch = spreadsheetUrl.match(/\/d\/([a-zA-Z0-9\-_]+)/);
   if (!idMatch) throw new Error('スプレッドシートのURLが正しくありません');
   const spreadsheetId = idMatch[1];
@@ -164,6 +201,31 @@ function saveToSheet(data) {
   ]);
 
   return { success: true };
+}
+
+// ────────────────────────────────────────────────────────
+// 新規スプレッドシート作成
+// ────────────────────────────────────────────────────────
+function createNewSpreadsheet() {
+  const ss = SpreadsheetApp.create('レシート記録_' + getTodayString());
+  const sheet = ss.getSheets()[0];
+  sheet.setName('レシート');
+
+  // ヘッダー行を追加
+  sheet.appendRow(['日付', '店舗名', '合計金額（円）']);
+  sheet.getRange(1, 1, 1, 3).setFontWeight('bold');
+  sheet.setFrozenRows(1);
+
+  // 列幅を調整
+  sheet.setColumnWidth(1, 120);
+  sheet.setColumnWidth(2, 180);
+  sheet.setColumnWidth(3, 150);
+
+  // C列を数値フォーマットに設定
+  sheet.getRange('C2:C1000').setNumberFormat('#,##0');
+
+  const url = ss.getUrl();
+  return { success: true, spreadsheetUrl: url };
 }
 
 // ────────────────────────────────────────────────────────
