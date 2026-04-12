@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>レシートスキャナー</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ホーム画面 -->
+  <div id="view-home" class="view active">
+    <div class="header">
+      <h1>レシートスキャナー</h1>
+      <button class="icon-btn" onclick="showSettings()">⚙️</button>
+    </div>
+    <div class="home-content">
+      <div class="camera-area" onclick="triggerCapture()">
+        <div class="camera-icon">📷</div>
+        <p>タップして撮影</p>
+      </div>
+      <button class="btn-primary" onclick="triggerCapture()">レシートを撮影する</button>
+      <label class="btn-secondary">
+        ファイルから選択
+        <input type="file" id="file-input-gallery" accept="image/*" onchange="handleFile(this)" style="display:none">
+      </label>
+    </div>
+    <input type="file" id="file-input" accept="image/*" capture="environment" onchange="handleFile(this)" style="display:none">
+  </div>
+
+  <!-- 処理中画面 -->
+  <div id="view-processing" class="view">
+    <div class="processing-content">
+      <div class="spinner"></div>
+      <p class="processing-text">レシートを読み取り中...</p>
+      <p class="processing-sub">少々お待ちください</p>
+    </div>
+  </div>
+
+  <!-- レビュー画面 -->
+  <div id="view-review" class="view">
+    <div class="header">
+      <button class="back-btn" onclick="showHome()">← 戻る</button>
+      <h2>内容確認</h2>
+      <div></div>
+    </div>
+    <div class="review-content">
+      <div class="field-group">
+        <label>日付</label>
+        <input type="text" id="review-date" placeholder="YYYY/MM/DD">
+      </div>
+      <div class="field-group">
+        <label>店舗名</label>
+        <input type="text" id="review-store" placeholder="店舗名">
+      </div>
+
+      <div class="items-section">
+        <div class="items-header">
+          <label>品目</label>
+          <span id="item-count" class="item-count"></span>
+        </div>
+        <div id="items-list"></div>
+      </div>
+
+      <div class="total-section">
+        <label>合計金額</label>
+        <div class="total-input-wrap">
+          <span class="yen-sign">¥</span>
+          <input type="number" id="review-total" placeholder="0" inputmode="numeric">
+        </div>
+      </div>
+
+      <div class="review-actions">
+        <button class="btn-primary" onclick="saveToSheet()">スプレッドシートに記録</button>
+        <button class="btn-secondary" onclick="showHome()">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 成功画面 -->
+  <div id="view-success" class="view">
+    <div class="success-content">
+      <div class="success-icon">✅</div>
+      <h2>記録しました</h2>
+      <div class="success-detail" id="success-detail"></div>
+      <button class="btn-primary" onclick="showHome()">続けて撮影する</button>
+    </div>
+  </div>
+
+  <!-- 設定画面 -->
+  <div id="view-settings" class="view">
+    <div class="header">
+      <button class="back-btn" onclick="showHome()">← 戻る</button>
+      <h2>設定</h2>
+      <div></div>
+    </div>
+    <div class="settings-content">
+      <div class="settings-section">
+        <h3>Google Apps Script</h3>
+        <p class="settings-desc">GASデプロイURLを入力してください。設定方法は <a href="https://github.com/YOUR_USERNAME/receipt-scanner#setup" target="_blank">README</a> を参照。</p>
+        <div class="field-group">
+          <label>GAS エンドポイント URL</label>
+          <input type="url" id="settings-gas-url" placeholder="https://script.google.com/macros/s/...">
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>スプレッドシート</h3>
+        <p class="settings-desc">転記先のGoogleスプレッドシートのURLを貼り付けてください。</p>
+        <div class="field-group">
+          <label>スプレッドシート URL</label>
+          <input type="url" id="settings-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/...">
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label>書き込むシート名（省略可）</label>
+        <input type="text" id="settings-sheet-name" placeholder="Sheet1（空白の場合は最初のシート）">
+      </div>
+
+      <button class="btn-primary" onclick="saveSettings()">設定を保存</button>
+
+      <div id="settings-status" class="settings-status"></div>
+
+      <div class="settings-section">
+        <h3>書き込み列の順番</h3>
+        <p class="settings-desc">以下の順でスプレッドシートに追記されます。</p>
+        <table class="col-table">
+          <tr><th>A列</th><td>日付</td></tr>
+          <tr><th>B列</th><td>店舗名</td></tr>
+          <tr><th>C列</th><td>合計金額（数値）</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- エラートースト -->
+  <div id="toast" class="toast"></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
