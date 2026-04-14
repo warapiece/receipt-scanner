@@ -129,14 +129,16 @@ async function callGas(gasUrl, payload) {
 // ── Review ────────────────────────────────────────────────
 function renderReview(data) {
   // Beginner fields
-  document.getElementById('b-date').value  = data.date  || '';
-  document.getElementById('b-store').value = data.store || '';
-  document.getElementById('b-total').value = data.total || '';
+  document.getElementById('b-date').value     = data.date  || '';
+  document.getElementById('b-store').value    = data.store || '';
+  document.getElementById('b-category').value = '';
+  document.getElementById('b-total').value    = data.total || '';
 
   // Pro fields
-  document.getElementById('p-date').value  = data.date  || '';
-  document.getElementById('p-store').value = data.store || '';
-  document.getElementById('p-total').value = data.total || '';
+  document.getElementById('p-date').value     = data.date  || '';
+  document.getElementById('p-store').value    = data.store || '';
+  document.getElementById('p-category').value = '';
+  document.getElementById('p-total').value    = data.total || '';
 
   const list = document.getElementById('items-list');
   list.innerHTML = '';
@@ -183,12 +185,14 @@ function escHtml(str) {
 // ── Save to Sheet ─────────────────────────────────────────
 async function saveToSheet(mode) {
   const s = loadSettings();
-  const prefix = mode === 'pro' ? 'p' : 'b';
-  const date  = document.getElementById(prefix + '-date').value.trim();
-  const store = document.getElementById(prefix + '-store').value.trim();
-  const total = Number(document.getElementById(prefix + '-total').value);
+  const prefix   = mode === 'pro' ? 'p' : 'b';
+  const date     = document.getElementById(prefix + '-date').value.trim();
+  const store    = document.getElementById(prefix + '-store').value.trim();
+  const category = document.getElementById(prefix + '-category').value;
+  const total    = Number(document.getElementById(prefix + '-total').value);
 
-  if (!total || isNaN(total)) { showToast('合計金額を入力してください'); return; }
+  if (!category) { showToast('内容を選択してください'); return; }
+  if (!total || isNaN(total)) { showToast('金額を入力してください'); return; }
 
   const viewId = mode === 'pro' ? 'view-review-pro' : 'view-review-beginner';
   const btn = document.querySelector('#' + viewId + ' .btn-record');
@@ -200,12 +204,13 @@ async function saveToSheet(mode) {
       action: 'save',
       spreadsheetUrl: s.sheetUrl,
       sheetName: s.sheetName,
-      date, store, total,
+      date, store, category, total,
     });
 
     document.getElementById('success-card').innerHTML = `
       <div class="s-date">${date || '日付不明'}</div>
       <div class="s-store">${store || '店舗名不明'}</div>
+      <div class="s-category">${category || ''}</div>
       <div class="s-total">¥${total.toLocaleString()}</div>
     `;
     const link = document.getElementById('sheet-link');

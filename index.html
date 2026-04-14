@@ -6,7 +6,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>レシートスキャナー</title>
-  <link rel="stylesheet" href="css/style.css?v=3">
+  <link rel="stylesheet" href="css/style.css?v=4">
 </head>
 <body>
 
@@ -76,11 +76,22 @@
         <input type="text" id="b-date" placeholder="YYYY/MM/DD">
       </div>
       <div class="review-field">
-        <label>店舗名</label>
-        <input type="text" id="b-store" placeholder="店舗名">
+        <label>店舗名 / 会社名</label>
+        <input type="text" id="b-store" placeholder="店舗名・会社名">
+      </div>
+      <div class="review-field">
+        <label>内容</label>
+        <select id="b-category" class="select-category">
+          <option value="">── 選択してください ──</option>
+          <option value="キャラクター景品代">キャラクター景品代</option>
+          <option value="移動費">移動費</option>
+          <option value="会場費">会場費</option>
+          <option value="飲食費">飲食費</option>
+          <option value="その他">その他</option>
+        </select>
       </div>
       <div class="review-total-block">
-        <label>合計金額<span class="check-label">← 確認してください</span></label>
+        <label>金額<span class="check-label">← 確認してください</span></label>
         <div class="total-row">
           <span class="yen">¥</span>
           <input type="number" id="b-total" inputmode="numeric" placeholder="0">
@@ -104,8 +115,19 @@
         <input type="text" id="p-date" placeholder="YYYY/MM/DD">
       </div>
       <div class="review-field">
-        <label>店舗名</label>
-        <input type="text" id="p-store" placeholder="店舗名">
+        <label>店舗名 / 会社名</label>
+        <input type="text" id="p-store" placeholder="店舗名・会社名">
+      </div>
+      <div class="review-field">
+        <label>内容</label>
+        <select id="p-category" class="select-category">
+          <option value="">── 選択してください ──</option>
+          <option value="キャラクター景品代">キャラクター景品代</option>
+          <option value="移動費">移動費</option>
+          <option value="会場費">会場費</option>
+          <option value="飲食費">飲食費</option>
+          <option value="その他">その他</option>
+        </select>
       </div>
       <div class="items-section">
         <div class="items-header">
@@ -116,7 +138,7 @@
         <button class="btn-recalc" onclick="recalcTotal()">↺ 品目から合計を再計算</button>
       </div>
       <div class="review-total-block">
-        <label>合計金額<span class="check-label">← 最終確認</span></label>
+        <label>金額<span class="check-label">← 最終確認</span></label>
         <div class="total-row">
           <span class="yen">¥</span>
           <input type="number" id="p-total" inputmode="numeric" placeholder="0">
@@ -170,13 +192,14 @@
       <div class="col-info">
         <p class="col-title">書き込み列</p>
         <div class="col-row"><span>A列</span><span>日付</span></div>
-        <div class="col-row"><span>B列</span><span>店舗名</span></div>
-        <div class="col-row"><span>C列</span><span>合計金額</span></div>
+        <div class="col-row"><span>B列</span><span>店舗名 / 会社名</span></div>
+        <div class="col-row"><span>C列</span><span>内容</span></div>
+        <div class="col-row"><span>D列</span><span>金額（円）</span></div>
       </div>
     </div>
   </div>
 
   <div id="toast" class="toast"></div>
-  <script src="js/app.js?v=3"></script>
+  <script src="js/app.js?v=4"></script>
 </body>
 </html>

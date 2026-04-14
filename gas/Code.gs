@@ -175,7 +175,7 @@ function parseReceiptText(text) {
 // スプレッドシートへ書き込み
 // ────────────────────────────────────────────────────────
 function saveToSheet(data) {
-  const { spreadsheetUrl, sheetName, date, store, total } = data;
+  const { spreadsheetUrl, sheetName, date, store, category, total } = data;
 
   if (!spreadsheetUrl) throw new Error('spreadsheetUrl が指定されていません');
 
@@ -193,10 +193,11 @@ function saveToSheet(data) {
     sheet = ss.getSheets()[0];
   }
 
-  // A列: 日付, B列: 店舗名, C列: 合計金額
+  // A列: 日付, B列: 店舗名/会社名, C列: 内容, D列: 金額
   sheet.appendRow([
     date || getTodayString(),
     store || '',
+    category || '',
     Number(total) || 0,
   ]);
 
@@ -212,17 +213,18 @@ function createNewSpreadsheet() {
   sheet.setName('レシート');
 
   // ヘッダー行を追加
-  sheet.appendRow(['日付', '店舗名', '合計金額（円）']);
-  sheet.getRange(1, 1, 1, 3).setFontWeight('bold');
+  sheet.appendRow(['日付', '店舗名 / 会社名', '内容', '金額（円）']);
+  sheet.getRange(1, 1, 1, 4).setFontWeight('bold');
   sheet.setFrozenRows(1);
 
   // 列幅を調整
   sheet.setColumnWidth(1, 120);
   sheet.setColumnWidth(2, 180);
-  sheet.setColumnWidth(3, 150);
+  sheet.setColumnWidth(3, 160);
+  sheet.setColumnWidth(4, 130);
 
-  // C列を数値フォーマットに設定
-  sheet.getRange('C2:C1000').setNumberFormat('#,##0');
+  // D列を数値フォーマットに設定
+  sheet.getRange('D2:D1000').setNumberFormat('#,##0');
 
   const url = ss.getUrl();
   return { success: true, spreadsheetUrl: url };
