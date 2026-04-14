@@ -53,31 +53,56 @@ function doGet() {
 // OCR: Google Drive の無料OCR機能を使用（APIキー不要）
 // ────────────────────────────────────────────────────────
 function ocrReceipt(base64Image) {
+  // Drive APIが有効か確認
+  if (typeof Drive === 'undefined') {
+    throw new Error('Drive APIが有効になっていません。GASエディタ→「サービス」→「Drive API」を追加してください');
+  }
+
   // base64画像をBlobに変換
   const imageBytes = Utilities.base64Decode(base64Image);
   const blob = Utilities.newBlob(imageBytes, 'image/jpeg', 'receipt_temp.jpg');
 
   // Google DriveのOCR機能でGoogleドキュメントとして取り込む（無料）
-  const file = Drive.Files.insert(
-    {
-      title: 'receipt_temp_ocr',
-      mimeType: 'application/vnd.google-apps.document'
-    },
-    blob,
-    {
-      ocr: true,
-      ocrLanguage: 'ja'   // 日本語OCR
-    }
-  );
+  let file;
+  try {
+    file = Drive.Files.insert(
+      {
+        title: 'receipt_ocr_' + Date.now(),
+        mimeType: 'application/vnd.google-apps.document'
+      },
+      blob,
+      {
+        ocr: true,
+        ocrLanguage: 'ja'
+      }
+    );
+  } catch (e) {
+    throw new Error('OCRファイル作成失敗: ' + e.message);
+  }
 
-  // テキスト抽出
-  const doc = DocumentApp.openById(file.id);
-  const rawText = doc.getBody().getText();
+  if (!file || !file.id) {
+    throw new Error('Drive OCRが空のファイルを返しました');
+  }
 
-  // 一時ファイルを削除
-  DriveApp.getFileById(file.id).setTrashed(true);
+  // ファイルが確実に準備されるまで待機
+  Utilities.sleep(2000);
 
-  // テキストを解析してJSON化
+  let rawText = '';
+  try {
+    const doc = DocumentApp.openById(file.id);
+    rawText = doc.getBody().getText();
+  } catch (e) {
+    throw new Error('OCRテキスト取得失敗: ' + e.message);
+  } finally {
+    // 必ず一時ファイルを削除
+    try { DriveApp.getFileById(file.id).setTrashed(true); } catch(_) {}
+  }
+
+  if (!rawText || rawText.trim().length === 0) {
+    // テキストが空でも空データを返す（エラーにしない）
+    return { date: getTodayString(), store: '', items: [], total: 0, rawText: '' };
+  }
+
   return parseReceiptText(rawText);
 }
 

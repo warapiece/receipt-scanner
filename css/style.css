@@ -126,6 +126,16 @@ html, body {
   cursor: pointer;
   padding: 8px;
 }
+.btn-manual {
+  background: none;
+  border: none;
+  color: var(--sub);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 8px;
+  text-decoration: underline;
+  margin-top: 4px;
+}
 .btn-secondary {
   display: block;
   width: 100%;

@@ -6,7 +6,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>レシートスキャナー</title>
-  <link rel="stylesheet" href="css/style.css?v=4">
+  <link rel="stylesheet" href="css/style.css?v=5">
 </head>
 <body>
 
@@ -36,6 +36,7 @@
         ギャラリーから選ぶ
         <input type="file" id="file-gallery-b" accept="image/*" onchange="handleFile(this)" style="display:none">
       </label>
+      <button class="btn-manual" onclick="openManualInput()">✏️ 手動で入力する</button>
     </div>
 
     <!-- プロ版モード -->
@@ -49,6 +50,7 @@
         ギャラリーから選ぶ
         <input type="file" id="file-gallery-p" accept="image/*" onchange="handleFile(this)" style="display:none">
       </label>
+      <button class="btn-manual" onclick="openManualInput()">✏️ 手動で入力する</button>
     </div>
 
     <input type="file" id="file-input" accept="image/*" capture="environment" onchange="handleFile(this)" style="display:none">
@@ -200,6 +202,6 @@
   </div>
 
   <div id="toast" class="toast"></div>
-  <script src="js/app.js?v=4"></script>
+  <script src="js/app.js?v=5"></script>
 </body>
 </html>

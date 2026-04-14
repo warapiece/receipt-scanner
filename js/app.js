@@ -54,6 +54,18 @@ function setMode(mode) {
 }
 
 // ── Camera / File ────────────────────────────────────────
+function openManualInput() {
+  const s = loadSettings();
+  if (!s.gasUrl || !s.sheetUrl) {
+    showToast('先に設定を完了してください');
+    showSettings();
+    return;
+  }
+  _sheetUrlCache = s.sheetUrl;
+  renderReview({});
+  showView(_currentMode === 'pro' ? 'review-pro' : 'review-beginner');
+}
+
 function triggerCapture() {
   const s = loadSettings();
   if (!s.gasUrl || !s.sheetUrl) {
@@ -82,9 +94,24 @@ function handleFile(input) {
       showView(_currentMode === 'pro' ? 'review-pro' : 'review-beginner');
     })
     .catch(err => {
-      showHome();
-      showToast('読み取り失敗: ' + err.message);
+      // OCR失敗でも空欄の確認画面を表示し手動入力できるようにする
+      const msg = classifyOcrError(err.message);
+      renderReview({});
+      showView(_currentMode === 'pro' ? 'review-pro' : 'review-beginner');
+      showToast(msg);
     });
+}
+
+function classifyOcrError(msg) {
+  if (/Drive.*not defined|Drive is not|Cannot read.*Drive/i.test(msg))
+    return 'GASでDrive APIが無効です。サービスからDrive APIを追加してください';
+  if (/HTTP 401|401/i.test(msg))
+    return 'GASの認証エラーです。デプロイ設定を確認してください';
+  if (/HTTP 403|403/i.test(msg))
+    return 'GASへのアクセスが拒否されました。「全員」に公開されているか確認してください';
+  if (/Failed to fetch|network|CORS/i.test(msg))
+    return 'GASに接続できません。URLを確認してください';
+  return '読み取りに失敗しました。手動で入力してください（' + msg + '）';
 }
 
 // ── Image Compression ─────────────────────────────────────
